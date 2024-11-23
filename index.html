@@ -41,11 +41,11 @@
 <script>
     const svg = d3.select("svg");
     const path = d3.geoPath();
-    let currentBinCount = document.querySelector("#binCount").value;
-    let currentMin = document.querySelector("#minThreshold").value;
-    let currentMax = document.querySelector("#maxThreshold").value;
+    let currentBinCount = +document.querySelector("#binCount").value;
+    let currentMin = +document.querySelector("#minThreshold").value;
+    let currentMax = +document.querySelector("#maxThreshold").value;
 
-    let minValue, maxValue; 
+    let minValue, maxValue;
 
     function plot_contour(fileNumber) {
         d3.json("dicomData/" + fileNumber).then(data => {
@@ -59,40 +59,38 @@
             minValue = min_max[0];
             maxValue = min_max[1];
 
+            // Update slider ranges dynamically based on data
             document.querySelector("#minThreshold").min = minValue;
             document.querySelector("#minThreshold").max = maxValue;
 
             document.querySelector("#maxThreshold").min = minValue;
             document.querySelector("#maxThreshold").max = maxValue;
 
-            
+            // Draw the contours
             function draw(binCount, minThreshold, maxThreshold) {
-    const colors = d3.scaleLinear()
-        .domain([minThreshold, minThreshold + (maxThreshold - minThreshold) * 0.2, 
-                 minThreshold + (maxThreshold - minThreshold) * 0.5, 
-                 minThreshold + (maxThreshold - minThreshold) * 0.8, maxThreshold])
-        .range(["#0d1a50", "#2b83ba", "#abdda4", "#fdae61", "#d7191c"]) // Dark blue to teal to light green to orange to red
-        .interpolate(d3.interpolateHcl);
+                const stepSize = (maxThreshold - minThreshold) / binCount;
+                const thresholds = d3.range(minThreshold, maxThreshold, stepSize);
 
-    let contours = d3.contours()
-        .size([m, n])
-        .thresholds(d3.range(minThreshold, maxThreshold, (maxThreshold - minThreshold) / binCount))
-        (values_density);
+                const colors = d3.scaleSequential()
+                    .domain([minThreshold, maxThreshold])
+                    .interpolator(d3.interpolateTurbo); // Smooth gradient from min to max
 
-    svg.append("g")
-        .attr("class", "contours")
-        .selectAll("path")
-        .data(contours)
-        .enter()
-        .append("path")
-        .attr("d", function(d) { return path(d); })
-        .attr("stroke", "black")
-        .attr("stroke-width", ".1px")
-        .attr("stroke-linejoin", "round")
-        .attr("fill", d => colors(d.value));
-}
+                let contours = d3.contours()
+                    .size([m, n])
+                    .thresholds(thresholds)(values_density);
 
-
+                svg.append("g")
+                    .attr("class", "contours")
+                    .selectAll("path")
+                    .data(contours)
+                    .enter()
+                    .append("path")
+                    .attr("d", function (d) { return path(d); })
+                    .attr("stroke", "black")
+                    .attr("stroke-width", ".1px")
+                    .attr("stroke-linejoin", "round")
+                    .attr("fill", d => colors(d.value));
+            }
 
             draw(currentBinCount, currentMin, currentMax);
 
@@ -102,7 +100,7 @@
                 currentMax = +document.querySelector("#maxThreshold").value;
 
                 const tagId = e.target.id;
-                if(tagId === "binCount" || tagId === "minThreshold" || tagId === "maxThreshold") {
+                if (tagId === "binCount" || tagId === "minThreshold" || tagId === "maxThreshold") {
                     draw(currentBinCount, currentMin, currentMax);
                 }
             });
